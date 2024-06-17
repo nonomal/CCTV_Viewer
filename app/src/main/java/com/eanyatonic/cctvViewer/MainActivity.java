@@ -4,6 +4,8 @@ import static com.eanyatonic.cctvViewer.FileUtils.copyAssets;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -38,6 +40,8 @@ import java.util.HashMap;
 //import android.webkit.WebViewClient;
 
 public class MainActivity extends AppCompatActivity {
+
+    private AudioManager audioManager;
 
     private WebView webView; // 导入 WebView
 
@@ -161,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout SubMenuCCTV;
     private LinearLayout SubMenuLocal;
     private TextView CoreText;
-    
+
     private int menuOverlaySelectedIndex = 0;
     private  int DrawerLayoutSelectedIndex = 0;
     private int SubMenuCCTVSelectedIndex = 0;
@@ -172,6 +176,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // 获取 AudioManager 实例
+        audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
 
         // 初始化 WebView
         webView = findViewById(R.id.webView);
@@ -208,6 +215,14 @@ public class MainActivity extends AppCompatActivity {
         // 加载上次保存的位置
         loadLastLiveIndex();
 
+        // https://developer.android.com/reference/android/webkit/WebView.html#getCurrentWebViewPackage()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { // Android 8.0+
+            PackageInfo pkgInfo = WebView.getCurrentWebViewPackage();
+            if (pkgInfo != null) {
+                CoreText.setText("当前程序运行在系统WebView上，版本号：" + pkgInfo.versionName);
+            }
+        }
+
         // X5内核代码
         copyAssets(this, "045738_x5.tbs.apk", "/data/user/0/com.eanyatonic.cctvViewer/app_tbs/045738_x5.tbs.apk");
 
@@ -232,7 +247,12 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
         webSettings.setDatabaseEnabled(true);
+        webSettings.setLoadsImagesAutomatically(false); // 禁用自动加载图片
+        webSettings.setBlockNetworkImage(true); // 禁用网络图片加载
         webSettings.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36");
+
+        // 启用缓存
+        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
         // 启用 JavaScript 自动点击功能
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
@@ -326,14 +346,14 @@ public class MainActivity extends AppCompatActivity {
                                         // 休眠 50 毫秒
                                         await sleep(50);
                                                     
-                                        console.log('点击分辨率按钮');
-                                        var elem = document.querySelector('#resolution_item_720_player');
-                                        try {
-                                            elem.click();
-                                            }
-                                        catch (error) {
-                                            clearInterval(interval);
-                                            }
+                                        // console.log('点击分辨率按钮');
+                                        // var elem = document.querySelector('#resolution_item_720_player');
+                                        // try {
+                                        //     elem.click();
+                                        //     }
+                                        // catch (error) {
+                                        //     clearInterval(interval);
+                                        //     }
                                         clearInterval(interval);
                                     }, 3000);
                                     """;
@@ -470,7 +490,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
-            if (menuOverlay.hasFocus()) {
+            if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP) {
+                audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
+            } else if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
+            } else if (menuOverlay.hasFocus()) {
                 // menuOverlay具有焦点
                 if(event.getKeyCode() == KeyEvent.KEYCODE_BACK){
                     // 按下返回键
